@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Outlet, NavLink, useNavigate, Link } from "react-router-dom";
+import { Outlet, NavLink, useNavigate, Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Home,
@@ -27,6 +27,8 @@ export default function Layout() {
   const { user, logout } = useAuthStore();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
+  const location = useLocation();
+  const isMessagesRoute = location.pathname === "/messages";
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -510,35 +512,37 @@ export default function Layout() {
       {/* Main content */}
       <main className="flex-1 min-h-screen md:ml-64">
         {/* Mobile top bar */}
-        <div
-          className="md:hidden sticky top-0 z-30 flex items-center justify-between px-4 py-3 border-b border-border-color"
-          style={{ backgroundColor: "var(--bg-primary)" }}
-        >
-          <button
-            onClick={() => setIsSidebarOpen(true)}
-            className="p-2 rounded-lg text-dark-400 hover:text-white hover:bg-white/8 transition-all duration-200 interactive-btn"
-            aria-label="Open menu"
+        {!isMessagesRoute && (
+          <div
+            className="md:hidden sticky top-0 z-30 flex items-center justify-between px-4 py-3 border-b border-border-color"
+            style={{ backgroundColor: "var(--bg-primary)" }}
           >
-            <Menu className="w-5 h-5" />
-          </button>
-          <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-accent-500 to-coral-500 flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-white" />
-            </div>
-            <span className="text-lg font-bold gradient-text">Nexus</span>
-          </Link>
-          <button
-            onClick={toggleTheme}
-            className="p-2 rounded-lg text-dark-400 hover:text-white hover:bg-white/8 transition-all duration-200 interactive-btn"
-            aria-label="Toggle theme"
-          >
-            {theme === "dark" ? (
-              <Sun className="w-5 h-5" />
-            ) : (
-              <Moon className="w-5 h-5" />
-            )}
-          </button>
-        </div>
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="p-2 rounded-lg text-dark-400 hover:text-white hover:bg-white/8 transition-all duration-200 interactive-btn"
+              aria-label="Open menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <Link to="/" className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-accent-500 to-coral-500 flex items-center justify-center">
+                <Sparkles className="w-4 h-4 text-white" />
+              </div>
+              <span className="text-lg font-bold gradient-text">Nexus</span>
+            </Link>
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-lg text-dark-400 hover:text-white hover:bg-white/8 transition-all duration-200 interactive-btn"
+              aria-label="Toggle theme"
+            >
+              {theme === "dark" ? (
+                <Sun className="w-5 h-5" />
+              ) : (
+                <Moon className="w-5 h-5" />
+              )}
+            </button>
+          </div>
+        )}
 
         <div className="max-w-2xl mx-auto py-4 sm:py-8 px-4 sm:px-6">
           <Outlet />

@@ -2,10 +2,9 @@ import { useState, useRef, useEffect } from 'react';
 import { Send, Image as ImageIcon, Video, Mic, X, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { uploadsApi } from '../api/uploads';
+import { API_BASE_URL } from '../config/env';
 import MediaPreviewModal from './MediaPreviewModal';
 import toast from 'react-hot-toast';
-
-const API_URL = 'http://192.168.1.6:3001';
 
 interface MessageInputProps {
   onSend: (content: string, type?: 'text' | 'image' | 'video' | 'audio', fileUrl?: string, fileType?: string, fileSize?: number) => void;
@@ -97,7 +96,7 @@ export default function MessageInput({ onSend, disabled }: MessageInputProps) {
         uploadResult = await uploadsApi.uploadVideo(mediaPreview.file);
       }
 
-      const fullUrl = `${API_URL}${uploadResult.url}`;
+      const fullUrl = `${API_BASE_URL}${uploadResult.url}`;
       onSend(
         caption.trim() || (mediaPreview.type === 'image' ? 'Photo' : 'Video'),
         mediaPreview.type,
@@ -198,7 +197,7 @@ export default function MessageInput({ onSend, disabled }: MessageInputProps) {
       setUploading(true);
       try {
         const uploadResult = await uploadsApi.uploadAudio(preview.file);
-        const fullUrl = `${API_URL}${uploadResult.url}`;
+        const fullUrl = `${API_BASE_URL}${uploadResult.url}`;
         onSend(
           content.trim() || 'Voice message',
           'audio',

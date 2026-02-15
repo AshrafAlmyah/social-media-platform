@@ -15,9 +15,8 @@ import ImageModal from "./ImageModal";
 import MessageMenu from "./MessageMenu";
 import ShareModal from "./ShareModal";
 import { Loader2, Pause, ChevronLeft } from "lucide-react";
+import { API_BASE_URL } from "../config/env";
 import toast from "react-hot-toast";
-
-const API_URL = "http://192.168.1.6.6:3001";
 
 interface ChatThreadProps {
   userId: string | null;
@@ -35,6 +34,8 @@ export default function ChatThread({
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sharedPosts, setSharedPosts] = useState<{ [key: string]: Post }>({});
+  const loadedPostIdsRef = useRef<Set<string>>(new Set());
+  const missingPostIdsRef = useRef<Set<string>>(new Set());
   const [imageModalUrl, setImageModalUrl] = useState<string | null>(null);
   const [playingAudio, setPlayingAudio] = useState<string | null>(null);
   const [audioDurations, setAudioDurations] = useState<{
@@ -55,6 +56,17 @@ export default function ChatThread({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const audioRefs = useRef<{ [key: string]: HTMLAudioElement }>({});
+  const lastTapRef = useRef<{
+    messageId: string | null;
+    time: number;
+    x: number;
+    y: number;
+  }>({
+    messageId: null,
+    time: 0,
+    x: 0,
+    y: 0,
+  });
   const { user } = useAuthStore();
   const navigate = useNavigate();
   const [isAtBottom, setIsAtBottom] = useState(true);
@@ -107,20 +119,29 @@ export default function ChatThread({
       }
 
       // Load shared posts
-      const postMessages = data.messages.filter(
-        (msg) => msg.type === "post" && msg.postId
-      );
+      const postMessages = data.messages.filter((msg) => {
+        if (msg.type !== "post" || !msg.postId) return false;
+        if (loadedPostIdsRef.current.has(msg.postId)) return false;
+        if (missingPostIdsRef.current.has(msg.postId)) return false;
+        return true;
+      });
       if (postMessages.length > 0) {
         const postsMap: { [key: string]: Post } = {};
+        const uniquePostIds = Array.from(
+          new Set(postMessages.map((msg) => msg.postId).filter(Boolean))
+        ) as string[];
         await Promise.all(
-          postMessages.map(async (msg) => {
-            if (msg.postId && !sharedPosts[msg.postId]) {
-              try {
-                const post = await postsApi.getOne(msg.postId);
-                postsMap[msg.postId] = post;
-              } catch (err) {
-                console.error(`Failed to load post ${msg.postId}:`, err);
+          uniquePostIds.map(async (postId) => {
+            try {
+              const post = await postsApi.getOne(postId);
+              postsMap[postId] = post;
+              loadedPostIdsRef.current.add(postId);
+            } catch (err: any) {
+              if (err?.response?.status === 404) {
+                missingPostIdsRef.current.add(postId);
+                return;
               }
+              console.error(`Failed to load post ${postId}:`, err);
             }
           })
         );
@@ -221,11 +242,17 @@ export default function ChatThread({
     }
   };
 
-  const handleMenuClick = (e: React.MouseEvent, messageId: string) => {
-    e.stopPropagation();
-
-    const target = e.currentTarget as HTMLElement;
-    const bubbleRect = target.getBoundingClientRect();
+  const openMenuAtRect = (
+    bubbleRect: {
+      left: number;
+      top: number;
+      width: number;
+      height: number;
+      right: number;
+      bottom: number;
+    },
+    messageId: string
+  ) => {
     const containerRect = messagesContainerRef.current?.getBoundingClientRect();
 
     // Approximate menu size for positioning & clamping
@@ -253,75 +280,41 @@ export default function ChatThread({
     setMenuOpen(messageId);
   };
 
-  const getPressHandlers = (messageId: string) => {
-    let pressTimer: number | null = null;
-    let startX = 0;
-    let startY = 0;
-    let moved = false;
+  const handleContextMenu = (e: React.MouseEvent, messageId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const target = e.currentTarget as HTMLElement;
+    const bubbleRect = target.getBoundingClientRect();
+    openMenuAtRect(bubbleRect, messageId);
+  };
 
-    const startPress = (clientX: number, clientY: number) => {
-      startX = clientX;
-      startY = clientY;
-      moved = false;
-      pressTimer = window.setTimeout(() => {
-        if (!moved) {
-          const target = messagesContainerRef.current;
-          if (!target) return;
-          // Use center of viewport as fallback
-          const rect = target.getBoundingClientRect();
-          const fakeEvent = {
-            stopPropagation: () => {},
-            currentTarget: {
-              getBoundingClientRect: () => ({
-                left: rect.left + rect.width / 2,
-                top: rect.top + rect.height / 2,
-                height: 0,
-                width: 0,
-                right: rect.right,
-                bottom: rect.bottom,
-              }),
-            },
-          } as unknown as React.MouseEvent;
-          handleMenuClick(fakeEvent, messageId);
-        }
-      }, 450);
+  const handleTouchEnd = (e: React.TouchEvent, messageId: string) => {
+    const targetEl = e.target as HTMLElement | null;
+    if (targetEl?.closest("button, a, input, textarea, video, audio")) return;
+
+    const touch = e.changedTouches[0];
+    if (!touch) return;
+
+    const now = Date.now();
+    const prev = lastTapRef.current;
+    const tapGap = now - prev.time;
+    const moved =
+      Math.abs(touch.clientX - prev.x) > 24 || Math.abs(touch.clientY - prev.y) > 24;
+    const isDoubleTap =
+      prev.messageId === messageId && tapGap > 0 && tapGap <= 320 && !moved;
+
+    lastTapRef.current = {
+      messageId,
+      time: now,
+      x: touch.clientX,
+      y: touch.clientY,
     };
 
-    const movePress = (clientX: number, clientY: number) => {
-      const dx = Math.abs(clientX - startX);
-      const dy = Math.abs(clientY - startY);
-      if (dx > 8 || dy > 8) {
-        moved = true;
-        if (pressTimer) {
-          clearTimeout(pressTimer);
-          pressTimer = null;
-        }
-      }
-    };
+    if (!isDoubleTap) return;
 
-    const endPress = () => {
-      if (pressTimer) {
-        clearTimeout(pressTimer);
-        pressTimer = null;
-      }
-    };
-
-    return {
-      onTouchStart: (e: React.TouchEvent) => {
-        const touch = e.touches[0];
-        if (touch) startPress(touch.clientX, touch.clientY);
-      },
-      onTouchMove: (e: React.TouchEvent) => {
-        const touch = e.touches[0];
-        if (touch) movePress(touch.clientX, touch.clientY);
-      },
-      onTouchEnd: endPress,
-      onTouchCancel: endPress,
-      onMouseDown: (e: React.MouseEvent) => startPress(e.clientX, e.clientY),
-      onMouseMove: (e: React.MouseEvent) => movePress(e.clientX, e.clientY),
-      onMouseUp: endPress,
-      onMouseLeave: endPress,
-    };
+    e.preventDefault();
+    const currentTarget = e.currentTarget as HTMLElement;
+    openMenuAtRect(currentTarget.getBoundingClientRect(), messageId);
   };
 
   const handleScroll = () => {
@@ -462,7 +455,7 @@ export default function ChatThread({
         className="sticky top-0 z-20 flex items-center gap-3 p-4 border-b border-border-color"
         style={{
           backgroundColor: "var(--card-bg)",
-          paddingTop: "calc(env(safe-area-inset-top, 0px) + 16px)",
+          paddingTop: "calc(env(safe-area-inset-top, 0px) + 24px)",
         }}
       >
         {onBack && (
@@ -567,7 +560,16 @@ export default function ChatThread({
                   className={`flex flex-col gap-1 max-w-[85%] md:max-w-[70%] ${
                     isOwn ? "items-end" : "items-start"
                   }`}
-                  {...(isOwn && !message.deleted ? getPressHandlers(message.id) : {})}
+                  onContextMenu={
+                    isOwn && !message.deleted
+                      ? (e) => handleContextMenu(e, message.id)
+                      : undefined
+                  }
+                  onTouchEnd={
+                    isOwn && !message.deleted
+                      ? (e) => handleTouchEnd(e, message.id)
+                      : undefined
+                  }
                 >
                   {message.type === "post" &&
                   message.postId &&
@@ -709,7 +711,7 @@ export default function ChatThread({
                       onClick={() => {
                         const imageUrl = message.fileUrl?.startsWith("http")
                           ? message.fileUrl
-                          : `${API_URL}${message.fileUrl}`;
+                          : `${API_BASE_URL}${message.fileUrl}`;
                         setImageModalUrl(imageUrl);
                       }}
                     >
@@ -717,7 +719,7 @@ export default function ChatThread({
                         src={
                           message.fileUrl?.startsWith("http")
                             ? message.fileUrl
-                            : `${API_URL}${message.fileUrl}`
+                            : `${API_BASE_URL}${message.fileUrl}`
                         }
                         alt={message.content || "Image"}
                         className="max-w-full max-h-64 object-cover"
@@ -765,7 +767,7 @@ export default function ChatThread({
                         src={
                           message.fileUrl?.startsWith("http")
                             ? message.fileUrl
-                            : `${API_URL}${message.fileUrl}`
+                            : `${API_BASE_URL}${message.fileUrl}`
                         }
                         controls
                         className="max-w-full max-h-64"
@@ -991,7 +993,7 @@ export default function ChatThread({
                                   "http"
                                 )
                                   ? message.fileUrl
-                                  : `${API_URL}${message.fileUrl}`;
+                                  : `${API_BASE_URL}${message.fileUrl}`;
                                 if (el.src !== audioUrl && audioUrl) {
                                   el.src = audioUrl;
                                 }
@@ -1020,7 +1022,7 @@ export default function ChatThread({
                             src={
                               message.fileUrl?.startsWith("http")
                                 ? message.fileUrl
-                                : `${API_URL}${message.fileUrl}`
+                                : `${API_BASE_URL}${message.fileUrl}`
                             }
                             preload="metadata"
                             onEnded={() => {

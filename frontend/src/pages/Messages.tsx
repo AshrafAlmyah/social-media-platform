@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { Home } from "lucide-react";
 import MessagesList from "../components/MessagesList";
 import ChatThread from "../components/ChatThread";
 import { messagesApi, ConversationWithMessages } from "../api/messages";
@@ -53,7 +54,7 @@ export default function Messages() {
         {/* Conversations List */}
         <div className="w-full md:w-64 border-l border-border-color flex flex-col">
           <div
-            className="p-4 border-b border-border-color"
+            className="p-4 border-b border-border-color flex items-center justify-between gap-3"
             style={{ backgroundColor: "var(--bg-secondary)" }}
           >
             <h1
@@ -62,6 +63,17 @@ export default function Messages() {
             >
               Messages
             </h1>
+            <Link
+              to="/"
+              className="md:hidden inline-flex items-center gap-1 px-3 py-2 rounded-lg text-sm transition-colors"
+              style={{
+                color: "var(--text-secondary)",
+                backgroundColor: "var(--bg-tertiary)",
+              }}
+            >
+              <Home className="w-4 h-4" />
+              Home
+            </Link>
           </div>
           <div className="flex-1 overflow-hidden">
             <MessagesList
@@ -81,7 +93,11 @@ export default function Messages() {
               exit={{ x: "100%" }}
               transition={{ type: "spring", stiffness: 260, damping: 30 }}
               className="md:hidden fixed inset-0 z-50 flex flex-col"
-              style={{ backgroundColor: "var(--bg-primary)" }}
+              style={{
+                backgroundColor: "var(--bg-primary)",
+                height: "100dvh",
+                minHeight: "100vh",
+              }}
             >
               <ChatThread
                 userId={selectedUserId}

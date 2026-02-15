@@ -18,9 +18,10 @@ async function bootstrap() {
   app.useStaticAssets(uploadsPath, {
     prefix: '/uploads/',
   });
-  
+  const baseUrl = process.env.BASE_URL;
+  const port = parseInt(process.env.PORT || '3001', 10);
   app.enableCors({
-    origin: 'http://192.168.1.6:3000',
+    origin: `${baseUrl}:3000`,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
@@ -33,9 +34,8 @@ async function bootstrap() {
   
   app.setGlobalPrefix('api');
   
-  const port = process.env.PORT || 3001;
-  await app.listen(port);
-  console.log(`🚀 Server running on http://192.168.1.6:${port}`);
+  
+  await app.listen(port, '0.0.0.0');
+  console.log(`🚀 Server running on ${baseUrl}:${port}`);
 }
 bootstrap();
-

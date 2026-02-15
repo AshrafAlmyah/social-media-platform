@@ -25,9 +25,8 @@ import PostActionsModal from "./PostActionsModal";
 import ShareModal from "./ShareModal";
 import ConfirmDeleteModal from "./ConfirmDeleteModal";
 import { messagesApi } from "../api/messages";
+import { API_BASE_URL } from "../config/env";
 import toast from "react-hot-toast";
-
-const API_URL = "http://192.168.1.6:3001";
 
 interface PostCardProps {
   post: Post;
@@ -183,7 +182,7 @@ export default function PostCard({ post, onDelete, onUpdate }: PostCardProps) {
     setIsUploadingImage(true);
     try {
       const result = await uploadsApi.uploadImage(file);
-      setEditImage(`${API_URL}${result.url}`);
+      setEditImage(`${API_BASE_URL}${result.url}`);
       toast.success("Image uploaded!");
     } catch (error) {
       toast.error("Failed to upload image");

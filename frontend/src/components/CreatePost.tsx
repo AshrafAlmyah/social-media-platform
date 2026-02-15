@@ -5,9 +5,8 @@ import { useAuthStore } from "../store/authStore";
 import { postsApi } from "../api/posts";
 import { uploadsApi } from "../api/uploads";
 import { Post } from "../types";
+import { API_BASE_URL } from "../config/env";
 import toast from "react-hot-toast";
-
-const API_URL = "http://192.168.1.6:3001";
 
 interface CreatePostProps {
   onPostCreated: (post: Post) => void;
@@ -75,7 +74,7 @@ export default function CreatePost({ onPostCreated }: CreatePostProps) {
     try {
       const post = await postsApi.create({
         content: content.trim(),
-        image: imageUrl ? `${API_URL}${imageUrl}` : undefined,
+        image: imageUrl ? `${API_BASE_URL}${imageUrl}` : undefined,
       });
 
       // Ensure the post has complete author info

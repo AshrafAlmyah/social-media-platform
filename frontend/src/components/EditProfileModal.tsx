@@ -1,13 +1,12 @@
 import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { X, Camera, Loader2, ImagePlus } from 'lucide-react';
+import { X, Camera, Loader2, ImagePlus, Trash2 } from 'lucide-react';
 import { usersApi } from '../api/users';
 import { uploadsApi } from '../api/uploads';
 import { useAuthStore } from '../store/authStore';
 import { UserProfile } from '../types';
+import { API_BASE_URL } from '../config/env';
 import toast from 'react-hot-toast';
-
-const API_URL = 'http://192.168.1.6:3001';
 
 interface EditProfileModalProps {
   profile: UserProfile;
@@ -56,7 +55,7 @@ export default function EditProfileModal({ profile, onClose, onSave }: EditProfi
 
     try {
       const result = await uploadsApi.uploadImage(file);
-      const fullUrl = `${API_URL}${result.url}`;
+      const fullUrl = `${API_BASE_URL}${result.url}`;
       setFormData({ ...formData, avatar: fullUrl });
       setAvatarPreview(fullUrl);
       toast.success('Avatar uploaded!');
@@ -89,7 +88,7 @@ export default function EditProfileModal({ profile, onClose, onSave }: EditProfi
 
     try {
       const result = await uploadsApi.uploadImage(file);
-      const fullUrl = `${API_URL}${result.url}`;
+      const fullUrl = `${API_BASE_URL}${result.url}`;
       setFormData({ ...formData, coverImage: fullUrl });
       setCoverPreview(fullUrl);
       toast.success('Cover image uploaded!');
@@ -109,8 +108,8 @@ export default function EditProfileModal({ profile, onClose, onSave }: EditProfi
       const updated = await usersApi.updateProfile({
         displayName: formData.displayName || undefined,
         bio: formData.bio || undefined,
-        avatar: formData.avatar || undefined,
-        coverImage: formData.coverImage || undefined,
+        avatar: formData.avatar,
+        coverImage: formData.coverImage,
       });
       updateUser(updated);
       onSave(formData);
@@ -120,6 +119,22 @@ export default function EditProfileModal({ profile, onClose, onSave }: EditProfi
       toast.error('Failed to update profile');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleRemoveAvatar = () => {
+    setAvatarPreview('');
+    setFormData((prev) => ({ ...prev, avatar: '' }));
+    if (avatarInputRef.current) {
+      avatarInputRef.current.value = '';
+    }
+  };
+
+  const handleRemoveCover = () => {
+    setCoverPreview('');
+    setFormData((prev) => ({ ...prev, coverImage: '' }));
+    if (coverInputRef.current) {
+      coverInputRef.current.value = '';
     }
   };
 
@@ -172,6 +187,19 @@ export default function EditProfileModal({ profile, onClose, onSave }: EditProfi
                   <Camera className="w-6 h-6 text-white" />
                 )}
               </div>
+              {coverPreview && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRemoveCover();
+                  }}
+                  className="absolute top-2 right-2 px-2 py-1 rounded-md bg-black/60 hover:bg-red-600 text-white text-xs font-medium transition-colors flex items-center gap-1"
+                >
+                  <Trash2 className="w-3 h-3" />
+                  Remove
+                </button>
+              )}
             </div>
             <input
               ref={coverInputRef}
@@ -214,6 +242,16 @@ export default function EditProfileModal({ profile, onClose, onSave }: EditProfi
                 <p className="text-xs text-dark-500 mt-1">
                   JPG, PNG, GIF or WebP. Max 5MB.
                 </p>
+                {avatarPreview && (
+                  <button
+                    type="button"
+                    onClick={handleRemoveAvatar}
+                    className="mt-2 inline-flex items-center gap-1 text-xs text-red-400 hover:text-red-300 transition-colors"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    Remove profile picture
+                  </button>
+                )}
               </div>
             </div>
             <input
@@ -289,4 +327,3 @@ export default function EditProfileModal({ profile, onClose, onSave }: EditProfi
     </motion.div>
   );
 }
-
