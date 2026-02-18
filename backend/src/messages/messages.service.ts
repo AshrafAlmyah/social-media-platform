@@ -25,6 +25,8 @@ export class MessagesService {
 
   async create(senderId: string, createMessageDto: CreateMessageDto): Promise<Message> {
     const { receiverId, content, type = 'text', postId, fileUrl, fileType, fileSize } = createMessageDto;
+    const normalizedContent = (content || '').trim();
+    const isMediaType = type === 'image' || type === 'video' || type === 'audio';
 
     // Verify receiver exists
     const receiver = await this.usersService.findById(receiverId);
@@ -37,8 +39,18 @@ export class MessagesService {
       throw new ForbiddenException('Cannot send message to yourself');
     }
 
+    // Text and shared-post messages must keep non-empty content
+    if ((type === 'text' || type === 'post') && !normalizedContent) {
+      throw new ForbiddenException('Message content cannot be empty');
+    }
+
+    // Media messages must always include a file URL
+    if (isMediaType && !fileUrl) {
+      throw new ForbiddenException('Media message is missing file URL');
+    }
+
     // Validate file size for media messages
-    if ((type === 'image' || type === 'video' || type === 'audio') && fileSize) {
+    if (isMediaType && fileSize) {
       if (fileSize > 15 * 1024 * 1024) {
         throw new ForbiddenException('File size must not exceed 15MB');
       }
@@ -49,12 +61,14 @@ export class MessagesService {
     const message = this.messagesRepository.create({
       senderId,
       receiverId,
-      content,
+      content:
+        normalizedContent ||
+        (type === 'image' ? 'Photo' : type === 'video' ? 'Video' : type === 'audio' ? 'Audio' : ''),
       type,
       postId: type === 'post' ? postId : null,
-      fileUrl: (type === 'image' || type === 'video' || type === 'audio') ? fileUrl : null,
-      fileType: (type === 'image' || type === 'video' || type === 'audio') ? fileType : null,
-      fileSize: (type === 'image' || type === 'video' || type === 'audio') ? fileSize : null,
+      fileUrl: isMediaType ? fileUrl : null,
+      fileType: isMediaType ? fileType : null,
+      fileSize: isMediaType ? fileSize : null,
       conversationId,
       isRead: false,
     });

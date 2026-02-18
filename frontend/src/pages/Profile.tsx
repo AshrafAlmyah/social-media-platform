@@ -104,22 +104,22 @@ export default function Profile() {
   if (!profile) {
     return (
       <div className="text-center py-20">
-        <h2 className="text-2xl font-bold text-white mb-2">User not found</h2>
+        <h2 className="type-h2 text-white mb-2">User not found</h2>
         <p className="text-dark-400">This user doesn't exist or has been deleted.</p>
       </div>
     );
   }
 
   return (
-    <div>
+    <div className="space-y-10">
       {/* Profile Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="glass-card rounded-2xl overflow-hidden mb-6"
+        className="glass-card rounded-xl overflow-hidden"
       >
         {/* Cover */}
-        <div className="h-36 bg-gradient-to-r from-accent-600 via-coral-500 to-mint-500 relative">
+        <div className="h-44 relative" style={{ backgroundColor: "var(--bg-tertiary)" }}>
           {profile.coverImage && (
             <img
               src={profile.coverImage}
@@ -130,10 +130,10 @@ export default function Profile() {
         </div>
 
         {/* Profile Info */}
-        <div className="px-6 pb-6 relative">
-          <div className="flex items-end justify-between -mt-14 mb-4">
+        <div className="px-6 md:px-8 pb-8 relative">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between -mt-16 mb-6 gap-4">
             {/* Profile Picture - positioned above cover */}
-            <div className="relative z-10 w-28 h-28 rounded-full bg-gradient-to-br from-accent-500 to-mint-500 border-4 border-dark-900 flex items-center justify-center text-white font-bold text-3xl shadow-xl shadow-black/30 overflow-hidden">
+            <div className="relative z-10 w-28 h-28 rounded-full border-4 flex items-center justify-center text-white font-semibold text-3xl overflow-hidden avatar-hover" style={{ backgroundColor: "var(--accent)", borderColor: "var(--bg-secondary)" }}>
               {profile.avatar ? (
                 <img src={profile.avatar} alt="" className="w-full h-full rounded-full object-cover" />
               ) : (
@@ -144,7 +144,7 @@ export default function Profile() {
             {isOwnProfile ? (
               <button
                 onClick={() => setShowEditModal(true)}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white font-medium transition-all duration-200 interactive-btn"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white font-medium transition-all duration-200 interactive-btn"
               >
                 <Edit2 className="w-4 h-4 icon-bounce" />
                 Edit Profile
@@ -154,7 +154,7 @@ export default function Profile() {
                 <button
                   onClick={handleFollow}
                   disabled={isFollowLoading}
-                  className={`flex items-center gap-2 px-5 py-2 rounded-xl font-medium transition-all duration-200 interactive-btn ${
+                  className={`flex items-center gap-2 px-5 py-2 rounded-lg font-medium transition-all duration-200 interactive-btn ${
                     profile.isFollowing
                       ? 'bg-white/5 hover:bg-coral-500/20 text-white hover:text-coral-400 hover:shadow-lg hover:shadow-coral-500/20'
                       : 'btn-primary text-white'
@@ -177,7 +177,7 @@ export default function Profile() {
                 <button
                   onClick={handleMessage}
                   disabled={isMessageLoading}
-                  className="flex items-center gap-2 px-5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white font-medium transition-all duration-200 interactive-btn"
+                  className="flex items-center gap-2 px-5 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white font-medium transition-all duration-200 interactive-btn"
                 >
                   {isMessageLoading ? (
                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -192,46 +192,46 @@ export default function Profile() {
             )}
           </div>
 
-          <h1 className="text-2xl font-bold text-white mb-1">
+          <h1 className="type-h1 text-white mb-1">
             {profile.displayName || profile.username}
           </h1>
-          <p className="text-dark-400 mb-3">@{profile.username}</p>
+          <p className="type-meta text-dark-400 mb-4">@{profile.username}</p>
 
           {profile.bio && (
-            <p className="text-white/80 mb-4">{profile.bio}</p>
+            <p className="type-body text-white/80 mb-5 max-w-2xl">{profile.bio}</p>
           )}
 
-          <div className="flex items-center gap-4 text-sm text-dark-400 mb-4">
+          <div className="flex items-center gap-3 text-sm text-dark-400 mb-6">
             <Calendar className="w-4 h-4" />
             Joined {format(new Date(profile.createdAt || new Date()), 'MMMM yyyy')}
           </div>
 
-          <div className="flex items-center gap-6">
-            <div className="text-center">
-              <span className="block text-xl font-bold text-white">{profile.postsCount}</span>
-              <span className="text-sm text-dark-400">Posts</span>
+          <div className="grid grid-cols-3 gap-2 sm:gap-4 p-4 rounded-xl soft-divider border" style={{ backgroundColor: "var(--bg-secondary)" }}>
+            <div className="text-center py-2">
+              <span className="block text-xl font-medium text-white">{profile.postsCount}</span>
+              <span className="type-meta text-dark-400">Posts</span>
             </div>
             <button
               onClick={() => setShowFollowersModal(true)}
-              className="text-center cursor-pointer hover:opacity-80 transition-opacity"
+              className="text-center cursor-pointer hover:opacity-80 transition-opacity py-2"
             >
-              <span className="block text-xl font-bold text-white">{profile.followersCount}</span>
-              <span className="text-sm text-dark-400">Followers</span>
+              <span className="block text-xl font-medium text-white">{profile.followersCount}</span>
+              <span className="type-meta text-dark-400">Followers</span>
             </button>
             <button
               onClick={() => setShowFollowingModal(true)}
-              className="text-center cursor-pointer hover:opacity-80 transition-opacity"
+              className="text-center cursor-pointer hover:opacity-80 transition-opacity py-2"
             >
-              <span className="block text-xl font-bold text-white">{profile.followingCount}</span>
-              <span className="text-sm text-dark-400">Following</span>
+              <span className="block text-xl font-medium text-white">{profile.followingCount}</span>
+              <span className="type-meta text-dark-400">Following</span>
             </button>
           </div>
         </div>
       </motion.div>
 
       {/* Posts */}
-      <h2 className="text-xl font-bold mb-4">Posts</h2>
-      <div className="space-y-4">
+      <h2 className="type-h2">Posts</h2>
+      <div className="space-y-6">
         <AnimatePresence>
           {posts.map((post) => (
             <PostCard key={post.id} post={post} onDelete={handlePostDeleted} />
@@ -280,4 +280,3 @@ export default function Profile() {
     </div>
   );
 }
-

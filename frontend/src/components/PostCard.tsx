@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -40,6 +40,7 @@ export default function PostCard({ post, onDelete, onUpdate }: PostCardProps) {
   const [likesCount, setLikesCount] = useState(post.likesCount || 0);
   const [isLiking, setIsLiking] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [isPostImageLoaded, setIsPostImageLoaded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(post.content);
   const [editImage, setEditImage] = useState(post.image || "");
@@ -56,6 +57,10 @@ export default function PostCard({ post, onDelete, onUpdate }: PostCardProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { user } = useAuthStore();
   const isOwner = user?.id === currentPost.author?.id;
+
+  useEffect(() => {
+    setIsPostImageLoaded(false);
+  }, [currentPost.image]);
 
   const handleLike = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -230,18 +235,18 @@ export default function PostCard({ post, onDelete, onUpdate }: PostCardProps) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -20 }}
-        className="glass-card rounded-2xl overflow-hidden card-lift"
+        className="glass-card rounded-xl overflow-hidden card-lift"
       >
         {/* Post Content Section */}
         <article className="p-6">
           {/* Header */}
-          <div className="flex items-start justify-between mb-4">
+          <div className="flex items-start justify-between mb-5">
             <MiniProfileCard username={currentPost.author.username}>
               <Link
                 to={`/${currentPost.author.username}`}
                 className="flex items-center gap-3 group interactive-link"
               >
-                <div className="w-11 h-11 rounded-full bg-gradient-to-br from-accent-500 to-mint-500 flex items-center justify-center text-white font-bold text-lg overflow-hidden avatar-hover">
+                <div className="w-11 h-11 rounded-full flex items-center justify-center text-white font-bold text-lg overflow-hidden avatar-hover" style={{ backgroundColor: "var(--accent)" }}>
                   {currentPost.author.avatar ? (
                     <img
                       src={currentPost.author.avatar}
@@ -254,11 +259,11 @@ export default function PostCard({ post, onDelete, onUpdate }: PostCardProps) {
                   )}
                 </div>
                 <div>
-                  <p className="font-bold text-white text-base group-hover:text-accent-400 transition-colors">
+                  <p className="font-semibold text-white text-lg group-hover:text-accent-400 transition-colors link-underline">
                     {currentPost.author.displayName ||
                       currentPost.author.username}
                   </p>
-                  <p className="text-xs text-dark-400 mt-0.5">
+                  <p className="type-meta text-dark-400 mt-1">
                     @{currentPost.author.username} ·{" "}
                     {formatDistanceToNow(new Date(currentPost.createdAt), {
                       addSuffix: true,
@@ -291,33 +296,42 @@ export default function PostCard({ post, onDelete, onUpdate }: PostCardProps) {
           {/* Content */}
           <div className="mt-3">
             <Link to={`/post/${currentPost.id}`} className="block interactive-link hover-scale">
-              <p className="text-white/95 text-base leading-relaxed whitespace-pre-wrap hover:text-white transition-colors" style={{ color: 'var(--text-primary)' }}>
+              <p className="type-post-title text-white/95 whitespace-pre-wrap hover:text-white transition-colors" style={{ color: 'var(--text-primary)' }}>
                 {currentPost.content}
               </p>
             </Link>
             {currentPost.image && (
-              <img
-                src={currentPost.image}
-                alt=""
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setIsImageModalOpen(true);
-                }}
-                className="w-full rounded-xl mt-4 object-cover max-h-96 shadow-lg cursor-pointer hover:opacity-90 transition-opacity"
-              />
+              <div className="relative w-full mt-5 rounded-xl overflow-hidden">
+                {!isPostImageLoaded && (
+                  <div className="absolute inset-0 skeleton-shimmer" aria-hidden="true" />
+                )}
+                <img
+                  src={currentPost.image}
+                  alt=""
+                  onLoad={() => setIsPostImageLoaded(true)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsImageModalOpen(true);
+                  }}
+                  className={`w-full object-cover max-h-[460px] shadow-sm cursor-pointer media-fade-image ${
+                    isPostImageLoaded ? "is-loaded" : ""
+                  }`}
+                  style={{ borderRadius: "10px" }}
+                />
+              </div>
             )}
           </div>
         </article>
 
         {/* Actions Section */}
-        <div className="flex items-center gap-3 px-6 py-4 bg-dark-900/40 border-t border-white/5">
+        <div className="flex flex-wrap items-center gap-3 px-6 py-4 border-t soft-divider" style={{ backgroundColor: "var(--bg-secondary)" }}>
           {/* Like Button */}
-          <button
+          <motion.button
             type="button"
             onClick={handleLike}
             disabled={isLiking}
-            className={`group relative flex items-center gap-2 px-4 py-2 rounded-full font-medium cursor-pointer select-none
+            className={`group reaction-btn relative flex items-center gap-2 px-4 py-2 rounded-full font-medium cursor-pointer select-none
               transition-all duration-200 overflow-visible interactive-btn
               ${
                 isLiked
@@ -329,31 +343,63 @@ export default function PostCard({ post, onDelete, onUpdate }: PostCardProps) {
             style={{
               color: isLiked ? 'var(--coral-text)' : undefined,
             }}
+            whileTap={{ scale: 0.97 }}
+            transition={{ duration: 0.16, ease: "easeOut" }}
           >
             {isAnimating && (
               <span className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 pointer-events-none">
-                <span className="absolute inset-0 rounded-full bg-coral-400/40 animate-ping" />
-                <span
-                  className="absolute inset-[-4px] rounded-full border-2 border-coral-400/60 animate-ping"
-                  style={{ animationDuration: "0.4s" }}
+                <motion.span
+                  className="reaction-ripple"
+                  initial={{ scale: 0.5, opacity: 0.6 }}
+                  animate={{ scale: 1.7, opacity: 0 }}
+                  transition={{ duration: 0.4, ease: "easeOut" }}
+                />
+                <motion.span
+                  className="reaction-particle reaction-particle-1"
+                  initial={{ opacity: 0.85, x: 0, y: 0 }}
+                  animate={{ opacity: 0, x: -6, y: -12 }}
+                  transition={{ duration: 0.45, ease: "easeOut" }}
+                />
+                <motion.span
+                  className="reaction-particle reaction-particle-2"
+                  initial={{ opacity: 0.85, x: 0, y: 0 }}
+                  animate={{ opacity: 0, x: 8, y: -8 }}
+                  transition={{ duration: 0.45, ease: "easeOut" }}
+                />
+                <motion.span
+                  className="reaction-particle reaction-particle-3"
+                  initial={{ opacity: 0.85, x: 0, y: 0 }}
+                  animate={{ opacity: 0, x: 0, y: -14 }}
+                  transition={{ duration: 0.45, ease: "easeOut" }}
                 />
               </span>
             )}
-            <Heart
-              className={`w-5 h-5 relative z-10
-                ${isLiked ? "fill-current" : ""} 
-                ${isAnimating ? "heart-pop" : ""}
-                ${!isAnimating && isLiked ? "scale-110" : "scale-100"}
-                ${!isAnimating && !isLiked ? "group-hover:scale-110" : ""}
-                ${isLiked ? "" : "text-dark-300 group-hover:text-coral-400"}
-                transition-transform duration-100 ease-out
-                group-active:scale-90`}
-              style={{
-                color: isLiked ? 'var(--coral-text)' : undefined,
-              }}
-            />
-            <span className="text-sm font-bold tabular-nums">{likesCount}</span>
-          </button>
+            <motion.span
+              className="relative z-10"
+              animate={
+                isAnimating
+                  ? {
+                      filter: [
+                        "drop-shadow(0 0 0 rgba(224,122,95,0))",
+                        "drop-shadow(0 0 6px rgba(224,122,95,0.5))",
+                        "drop-shadow(0 0 0 rgba(224,122,95,0))",
+                      ],
+                    }
+                  : { filter: "drop-shadow(0 0 0 rgba(224,122,95,0))" }
+              }
+              transition={{ duration: 0.35, ease: "easeOut" }}
+            >
+              <Heart
+                className={`w-5 h-5 reaction-icon ${
+                  isLiked ? "fill-current" : ""
+                } ${isLiked ? "" : "text-dark-300 group-hover:text-coral-400"} transition-all duration-200 ease-out`}
+                style={{
+                  color: isLiked ? 'var(--coral-text)' : undefined,
+                }}
+              />
+            </motion.span>
+            <span className="text-sm font-medium tabular-nums">{likesCount} Likes</span>
+          </motion.button>
 
           {/* Comment Button */}
           <Link
@@ -378,13 +424,13 @@ export default function PostCard({ post, onDelete, onUpdate }: PostCardProps) {
               }}
             />
             <span
-              className="text-sm font-bold tabular-nums relative z-10 transition-all duration-150 
+              className="text-sm font-medium tabular-nums relative z-10 transition-all duration-150 
               group-hover:translate-x-0.5 group-hover:text-accent-400"
               style={{
                 color: 'var(--text-secondary)',
               }}
             >
-              {currentPost.commentsCount || 0}
+              {currentPost.commentsCount || 0} Comments
             </span>
           </Link>
 
@@ -399,7 +445,7 @@ export default function PostCard({ post, onDelete, onUpdate }: PostCardProps) {
               bg-white/5 text-dark-300 
               hover:bg-mint-500/20 hover:text-mint-400 
               hover:shadow-lg hover:shadow-mint-500/20
-              transition-all duration-200 ease-out font-medium interactive-btn
+              transition-all duration-200 ease-out font-medium interactive-btn share-btn-colored
               active:scale-95"
             style={{
               color: 'var(--text-secondary)',
@@ -414,6 +460,7 @@ export default function PostCard({ post, onDelete, onUpdate }: PostCardProps) {
                 color: 'var(--text-secondary)',
               }}
             />
+            <span className="text-sm font-medium relative z-10">Share</span>
           </button>
         </div>
       </motion.div>

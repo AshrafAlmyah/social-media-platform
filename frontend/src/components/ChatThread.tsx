@@ -56,6 +56,8 @@ export default function ChatThread({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const audioRefs = useRef<{ [key: string]: HTMLAudioElement }>({});
+  const imageTapTimeoutRef = useRef<number | null>(null);
+  const lastImageTouchAtRef = useRef(0);
   const lastTapRef = useRef<{
     messageId: string | null;
     time: number;
@@ -70,6 +72,14 @@ export default function ChatThread({
   const { user } = useAuthStore();
   const navigate = useNavigate();
   const [isAtBottom, setIsAtBottom] = useState(true);
+
+  useEffect(() => {
+    return () => {
+      if (imageTapTimeoutRef.current) {
+        window.clearTimeout(imageTapTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (userId) {
@@ -225,11 +235,22 @@ export default function ChatThread({
   const handleForward = async (receiverId: string) => {
     if (!forwardingMessage) return;
 
+    const forwardType = forwardingMessage.type || "text";
+    const forwardContent =
+      forwardingMessage.content?.trim() ||
+      (forwardType === "image"
+        ? "Photo"
+        : forwardType === "video"
+        ? "Video"
+        : forwardType === "audio"
+        ? "Audio"
+        : "");
+
     try {
       await messagesApi.sendMessage(
         receiverId,
-        forwardingMessage.content || "",
-        forwardingMessage.type || "text",
+        forwardContent,
+        forwardType,
         forwardingMessage.postId || undefined,
         forwardingMessage.fileUrl || undefined,
         forwardingMessage.fileType || undefined,
@@ -315,6 +336,62 @@ export default function ChatThread({
     e.preventDefault();
     const currentTarget = e.currentTarget as HTMLElement;
     openMenuAtRect(currentTarget.getBoundingClientRect(), messageId);
+  };
+
+  const openImageModal = (fileUrl?: string | null) => {
+    if (!fileUrl) return;
+    const imageUrl = fileUrl.startsWith("http")
+      ? fileUrl
+      : `${API_BASE_URL}${fileUrl}`;
+    setImageModalUrl(imageUrl);
+  };
+
+  const handleImageTouchEnd = (
+    e: React.TouchEvent,
+    message: Message,
+    isOwn: boolean
+  ) => {
+    const targetEl = e.target as HTMLElement | null;
+    if (targetEl?.closest("button, a, input, textarea, video, audio")) return;
+
+    const touch = e.changedTouches[0];
+    if (!touch) return;
+
+    lastImageTouchAtRef.current = Date.now();
+    const now = Date.now();
+    const prev = lastTapRef.current;
+    const tapGap = now - prev.time;
+    const moved =
+      Math.abs(touch.clientX - prev.x) > 24 ||
+      Math.abs(touch.clientY - prev.y) > 24;
+    const isDoubleTap =
+      prev.messageId === message.id && tapGap > 0 && tapGap <= 320 && !moved;
+
+    lastTapRef.current = {
+      messageId: message.id,
+      time: now,
+      x: touch.clientX,
+      y: touch.clientY,
+    };
+
+    if (imageTapTimeoutRef.current) {
+      window.clearTimeout(imageTapTimeoutRef.current);
+      imageTapTimeoutRef.current = null;
+    }
+
+    if (isOwn && !message.deleted && isDoubleTap) {
+      e.preventDefault();
+      const currentTarget = e.currentTarget as HTMLElement;
+      openMenuAtRect(currentTarget.getBoundingClientRect(), message.id);
+      return;
+    }
+
+    // Delay own-message image opening so a second tap can open the menu instead.
+    const delay = isOwn && !message.deleted ? 260 : 0;
+    imageTapTimeoutRef.current = window.setTimeout(() => {
+      openImageModal(message.fileUrl);
+      imageTapTimeoutRef.current = null;
+    }, delay);
   };
 
   const handleScroll = () => {
@@ -452,7 +529,7 @@ export default function ChatThread({
     <div className="flex flex-col h-full relative">
       {/* Header */}
       <div
-        className="sticky top-0 z-20 flex items-center gap-3 p-4 border-b border-border-color"
+        className="sticky top-0 z-20 flex items-center gap-3 p-4"
         style={{
           backgroundColor: "var(--card-bg)",
           paddingTop: "calc(env(safe-area-inset-top, 0px) + 24px)",
@@ -482,7 +559,7 @@ export default function ChatThread({
               className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm"
               style={{
                 background:
-                  "linear-gradient(135deg, var(--accent) 0%, var(--coral-text) 100%)",
+                  "var(--accent)",
                 color: "white",
               }}
             >
@@ -507,8 +584,7 @@ export default function ChatThread({
       <div
         ref={messagesContainerRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto p-4 space-y-4"
-        style={{ backgroundColor: "var(--bg-primary)" }}
+        className="chat-thread-messages flex-1 overflow-y-auto p-5 space-y-5"
       >
         <AnimatePresence>
           {messages.map((message, index) => {
@@ -524,10 +600,10 @@ export default function ChatThread({
             return (
               <motion.div
                 key={message.id}
-                initial={{ opacity: 0, y: 10 }}
+                initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, x: isOwn ? 20 : -20 }}
-                transition={{ delay: index * 0.02 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.16, ease: "easeOut" }}
                 className={`flex gap-2 ${
                   isOwn ? "flex-row-reverse" : "flex-row"
                 }`}
@@ -547,7 +623,7 @@ export default function ChatThread({
                         className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs"
                         style={{
                           background:
-                            "linear-gradient(135deg, var(--accent) 0%, var(--coral-text) 100%)",
+                            "var(--accent)",
                           color: "white",
                         }}
                       >
@@ -557,7 +633,7 @@ export default function ChatThread({
                   </div>
                 )}
                 <div
-                  className={`flex flex-col gap-1 max-w-[85%] md:max-w-[70%] ${
+                  className={`flex flex-col gap-1 max-w-[88%] md:max-w-[72%] ${
                     isOwn ? "items-end" : "items-start"
                   }`}
                   onContextMenu={
@@ -583,15 +659,13 @@ export default function ChatThread({
                       }}
                     >
                       <motion.div
-                        whileHover={{ scale: 1.02, y: -2 }}
-                        whileTap={{ scale: 0.98 }}
+                        whileHover={{ y: -1 }}
+                        whileTap={{ scale: 0.99 }}
                         className={`rounded-2xl overflow-hidden transition-all duration-300 cursor-pointer ${
-                          isOwn ? "rounded-br-sm" : "rounded-bl-sm"
+                          isOwn ? "chat-bubble-sent" : "chat-bubble-received"
                         }`}
                         style={{
-                          backgroundColor: isOwn
-                            ? "var(--accent)"
-                            : "var(--card-bg)",
+                          borderRadius: "16px",
                           border: `1px solid ${
                             isOwn
                               ? "rgba(255,255,255,0.2)"
@@ -616,7 +690,7 @@ export default function ChatThread({
                               className="w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs"
                               style={{
                                 background:
-                                  "linear-gradient(135deg, var(--accent) 0%, var(--coral-text) 100%)",
+                                  "var(--accent)",
                                 color: "white",
                               }}
                             >
@@ -693,15 +767,13 @@ export default function ChatThread({
                     </Link>
                   ) : message.type === "image" && message.fileUrl ? (
                     <motion.div
-                      whileHover={{ scale: 1.02, y: -2 }}
-                      whileTap={{ scale: 0.98 }}
+                      whileHover={{ y: -1 }}
+                      whileTap={{ scale: 0.99 }}
                       className={`rounded-2xl overflow-hidden transition-all duration-300 cursor-pointer ${
-                        isOwn ? "rounded-br-sm" : "rounded-bl-sm"
+                        isOwn ? "chat-bubble-sent" : "chat-bubble-received"
                       }`}
                       style={{
-                        backgroundColor: isOwn
-                          ? "var(--accent)"
-                          : "var(--card-bg)",
+                        borderRadius: "16px",
                         border: `1px solid ${
                           isOwn
                             ? "rgba(255,255,255,0.2)"
@@ -709,10 +781,14 @@ export default function ChatThread({
                         }`,
                       }}
                       onClick={() => {
-                        const imageUrl = message.fileUrl?.startsWith("http")
-                          ? message.fileUrl
-                          : `${API_BASE_URL}${message.fileUrl}`;
-                        setImageModalUrl(imageUrl);
+                        if (Date.now() - lastImageTouchAtRef.current < 500) {
+                          return;
+                        }
+                        openImageModal(message.fileUrl);
+                      }}
+                      onTouchEnd={(e) => {
+                        e.stopPropagation();
+                        handleImageTouchEnd(e, message, isOwn);
                       }}
                     >
                       <img
@@ -748,14 +824,12 @@ export default function ChatThread({
                     </motion.div>
                   ) : message.type === "video" && message.fileUrl ? (
                     <motion.div
-                      whileHover={{ scale: 1.01 }}
+                      whileHover={{ y: -1 }}
                       className={`rounded-2xl overflow-hidden transition-all duration-300 ${
-                        isOwn ? "rounded-br-sm" : "rounded-bl-sm"
+                        isOwn ? "chat-bubble-sent" : "chat-bubble-received"
                       }`}
                       style={{
-                        backgroundColor: isOwn
-                          ? "var(--accent)"
-                          : "var(--card-bg)",
+                        borderRadius: "16px",
                         border: `1px solid ${
                           isOwn
                             ? "rgba(255,255,255,0.2)"
@@ -799,16 +873,14 @@ export default function ChatThread({
                     message.fileUrl &&
                     message.fileUrl.trim() !== "" ? (
                     <motion.div
-                      initial={{ opacity: 0, scale: 0.95 }}
+                      initial={{ opacity: 0, scale: 0.98 }}
                       animate={{ opacity: 1, scale: 1 }}
-                      whileHover={{ scale: 1.01 }}
+                      whileHover={{ y: -1 }}
                       className={`rounded-2xl transition-all duration-300 ${
-                        isOwn ? "rounded-br-sm" : "rounded-bl-sm"
+                        isOwn ? "chat-bubble-sent" : "chat-bubble-received"
                       }`}
                       style={{
-                        backgroundColor: isOwn
-                          ? "var(--accent)"
-                          : "var(--card-bg)",
+                        borderRadius: "16px",
                         border: `1px solid ${
                           isOwn
                             ? "rgba(255,255,255,0.15)"
@@ -1101,15 +1173,12 @@ export default function ChatThread({
                   ) : (
                     <div className="relative group">
                       <motion.div
-                        whileHover={{ scale: 1.02 }}
-                        className={`px-4 py-2 rounded-2xl transition-all duration-200 ${
-                          isOwn ? "rounded-br-sm" : "rounded-bl-sm"
+                        whileHover={{ y: -1 }}
+                        className={`px-4 py-2.5 rounded-2xl transition-all duration-200 ${
+                          isOwn ? "chat-bubble-sent" : "chat-bubble-received"
                         }`}
                         style={{
-                          backgroundColor: isOwn
-                            ? "var(--accent)"
-                            : "var(--card-bg)",
-                          color: isOwn ? "white" : "var(--text-primary)",
+                          borderRadius: "16px",
                         }}
                       >
                         {message.deleted ? (
@@ -1117,7 +1186,7 @@ export default function ChatThread({
                             This message was deleted
                           </p>
                         ) : (
-                          <p className="text-sm whitespace-pre-wrap break-words select-none">
+                          <p className="type-body whitespace-pre-wrap break-words select-none">
                             {message.content?.replace(/🎤\s*/g, "").trim() ||
                               message.content}
                           </p>

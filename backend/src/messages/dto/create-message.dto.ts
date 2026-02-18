@@ -6,7 +6,6 @@ export class CreateMessageDto {
   receiverId: string;
 
   @IsString()
-  @IsNotEmpty()
   content: string;
 
   @IsEnum(['text', 'post', 'image', 'video', 'audio'])
@@ -30,5 +29,4 @@ export class CreateMessageDto {
   @Max(15 * 1024 * 1024, { message: 'File size must not exceed 15MB' })
   fileSize?: number;
 }
-
 

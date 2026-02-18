@@ -234,7 +234,7 @@ export default function MessageInput({ onSend, disabled }: MessageInputProps) {
   const canSend = content.trim() || preview;
 
   return (
-    <form onSubmit={handleSubmit} className="border-t border-border-color p-4">
+    <form onSubmit={handleSubmit} className="p-4">
       {/* Audio Preview Only (images/videos use modal) */}
       <AnimatePresence>
         {preview && preview.type === 'audio' && (
@@ -381,7 +381,7 @@ export default function MessageInput({ onSend, disabled }: MessageInputProps) {
             placeholder={recording ? "Recording..." : "Type a message..."}
             disabled={disabled || uploading || recording}
             rows={1}
-            className="w-full px-4 py-3 rounded-xl resize-none transition-all duration-200 focus-glow"
+            className="w-full px-4 py-3 rounded-lg resize-none transition-all duration-200 focus-glow"
             style={{
               backgroundColor: 'var(--bg-tertiary)',
               color: 'var(--text-primary)',
@@ -402,7 +402,7 @@ export default function MessageInput({ onSend, disabled }: MessageInputProps) {
           disabled={!canSend || disabled || uploading}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          className="p-3 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[48px]"
+          className="p-3 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[48px]"
           style={{
             backgroundColor: canSend ? 'var(--accent)' : 'var(--bg-tertiary)',
             color: 'white',

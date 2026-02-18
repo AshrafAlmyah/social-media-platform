@@ -53,7 +53,7 @@ export default function Feed() {
         <motion.h1
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-3xl font-bold mb-6"
+          className="type-h1 mb-8"
         >
           Your <span className="gradient-text">Feed</span>
         </motion.h1>
@@ -71,14 +71,14 @@ export default function Feed() {
       <motion.h1
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="text-3xl font-bold mb-6"
+        className="type-h1 mb-8"
       >
         Your <span className="gradient-text">Feed</span>
       </motion.h1>
 
       <CreatePost onPostCreated={handlePostCreated} />
 
-      <div className="space-y-4">
+      <div className="space-y-8 md:space-y-10">
         <AnimatePresence>
           {posts.map((post) => (
             <PostCard key={post.id} post={post} onDelete={handlePostDeleted} />
@@ -93,8 +93,8 @@ export default function Feed() {
           className="text-center py-20 glass-card rounded-2xl"
         >
           <div className="text-6xl mb-4">📭</div>
-          <h3 className="text-xl font-bold text-white mb-2">Your feed is empty</h3>
-          <p className="text-dark-400 text-sm">
+          <h3 className="type-h3 text-white mb-3">Your feed is empty</h3>
+          <p className="type-meta text-dark-400">
             Follow users to see their posts here
           </p>
         </motion.div>
@@ -113,7 +113,6 @@ export default function Feed() {
     </div>
   );
 }
-
 
 
 

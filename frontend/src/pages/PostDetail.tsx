@@ -30,6 +30,7 @@ export default function PostDetail() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLiking, setIsLiking] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [isPostImageLoaded, setIsPostImageLoaded] = useState(false);
   const [replyingTo, setReplyingTo] = useState<{ id: string; username: string } | null>(null);
   const [replyContent, setReplyContent] = useState('');
   const [isSubmittingReply, setIsSubmittingReply] = useState(false);
@@ -64,6 +65,10 @@ export default function PostDetail() {
 
     fetchData();
   }, [postId, navigate]);
+
+  useEffect(() => {
+    setIsPostImageLoaded(false);
+  }, [post?.image]);
 
   // Focus reply input when replying to a comment
   useEffect(() => {
@@ -290,7 +295,7 @@ export default function PostDetail() {
   if (!post) {
     return (
       <div className="text-center py-20">
-        <h2 className="text-2xl font-bold text-white mb-2">Post not found</h2>
+        <h2 className="type-h2 text-white mb-2">Post not found</h2>
         <p className="text-dark-400">This post doesn't exist or has been deleted.</p>
       </div>
     );
@@ -311,12 +316,12 @@ export default function PostDetail() {
       <motion.article
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="glass-card rounded-2xl p-6 mb-6"
+        className="glass-card rounded-xl p-6 mb-6"
       >
         <div className="flex items-start gap-4 mb-4">
           <MiniProfileCard username={post.author.username}>
             <Link to={`/${post.author.username}`} className="interactive-link">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-accent-500 to-mint-500 flex items-center justify-center text-white font-bold text-lg overflow-hidden avatar-hover">
+              <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg overflow-hidden avatar-hover" style={{ backgroundColor: "var(--accent)" }}>
                 {post.author.avatar ? (
                   <img src={post.author.avatar} alt="" className="w-full h-full object-cover" />
                 ) : (
@@ -329,35 +334,44 @@ export default function PostDetail() {
             <MiniProfileCard username={post.author.username}>
               <Link
                 to={`/${post.author.username}`}
-                className="font-semibold text-white hover:text-accent-400 transition-all duration-200 interactive-link hover-scale"
+                className="font-semibold text-white hover:text-accent-400 transition-all duration-200 interactive-link hover-scale link-underline"
               >
                 {post.author.displayName || post.author.username}
               </Link>
             </MiniProfileCard>
-            <p className="text-sm text-dark-400">
+            <p className="type-meta text-dark-400">
               @{post.author.username} · {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
             </p>
           </div>
         </div>
 
-        <p className="text-lg text-white/90 whitespace-pre-wrap mb-4">{post.content}</p>
+        <p className="type-post-title text-white/90 whitespace-pre-wrap mb-6">{post.content}</p>
 
         {post.image && (
-          <img
-            src={post.image}
-            alt=""
-            onClick={() => setIsImageModalOpen(true)}
-            className="w-full rounded-xl mb-4 object-cover max-h-[500px] cursor-pointer hover:opacity-90 transition-opacity"
-          />
+          <div className="relative w-full rounded-xl mb-4 overflow-hidden">
+            {!isPostImageLoaded && (
+              <div className="absolute inset-0 skeleton-shimmer" aria-hidden="true" />
+            )}
+            <img
+              src={post.image}
+              alt=""
+              onLoad={() => setIsPostImageLoaded(true)}
+              onClick={() => setIsImageModalOpen(true)}
+              className={`w-full object-cover max-h-[500px] cursor-pointer media-fade-image ${
+                isPostImageLoaded ? 'is-loaded' : ''
+              }`}
+              style={{ borderRadius: "10px" }}
+            />
+          </div>
         )}
 
         <div className="flex items-center gap-4 pt-4 border-t border-white/5">
           {/* Like Button */}
-          <button
+          <motion.button
             type="button"
             onClick={handleLike}
             disabled={isLiking}
-            className={`group relative flex items-center gap-2 px-4 py-2 rounded-full font-semibold cursor-pointer select-none text-sm
+            className={`group reaction-btn relative flex items-center gap-2 px-4 py-2 rounded-full font-semibold cursor-pointer select-none text-sm
               transition-all duration-200 overflow-visible interactive-btn
               ${post.isLiked 
                 ? 'bg-coral-500/20 text-coral-400 hover:bg-coral-500/30 hover:shadow-lg hover:shadow-coral-500/20' 
@@ -368,28 +382,63 @@ export default function PostDetail() {
             style={{
               color: post.isLiked ? 'var(--coral-text)' : undefined,
             }}
+            whileTap={{ scale: 0.97 }}
+            transition={{ duration: 0.16, ease: 'easeOut' }}
           >
             {isAnimating && (
               <span className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 pointer-events-none">
-                <span className="absolute inset-0 rounded-full bg-coral-400/40 animate-ping" />
-                <span className="absolute inset-[-3px] rounded-full border-2 border-coral-400/60 animate-ping" style={{ animationDuration: '0.4s' }} />
+                <motion.span
+                  className="reaction-ripple"
+                  initial={{ scale: 0.5, opacity: 0.6 }}
+                  animate={{ scale: 1.7, opacity: 0 }}
+                  transition={{ duration: 0.4, ease: 'easeOut' }}
+                />
+                <motion.span
+                  className="reaction-particle reaction-particle-1"
+                  initial={{ opacity: 0.85, x: 0, y: 0 }}
+                  animate={{ opacity: 0, x: -6, y: -12 }}
+                  transition={{ duration: 0.45, ease: 'easeOut' }}
+                />
+                <motion.span
+                  className="reaction-particle reaction-particle-2"
+                  initial={{ opacity: 0.85, x: 0, y: 0 }}
+                  animate={{ opacity: 0, x: 8, y: -8 }}
+                  transition={{ duration: 0.45, ease: 'easeOut' }}
+                />
+                <motion.span
+                  className="reaction-particle reaction-particle-3"
+                  initial={{ opacity: 0.85, x: 0, y: 0 }}
+                  animate={{ opacity: 0, x: 0, y: -14 }}
+                  transition={{ duration: 0.45, ease: 'easeOut' }}
+                />
               </span>
             )}
-            <Heart 
-              className={`w-5 h-5 relative z-10
-                ${post.isLiked ? 'fill-current' : ''} 
-                ${isAnimating ? 'heart-pop' : ''}
-                ${!isAnimating && post.isLiked ? 'scale-110' : 'scale-100'}
-                ${!isAnimating && !post.isLiked ? 'group-hover:scale-110' : ''}
-                ${post.isLiked ? '' : 'text-dark-300 group-hover:text-coral-400'}
-                transition-transform duration-100 ease-out
-                group-active:scale-90`}
-              style={{
-                color: post.isLiked ? 'var(--coral-text)' : undefined,
-              }}
-            />
-            <span className="tabular-nums">{post.likesCount || 0} likes</span>
-          </button>
+            <motion.span
+              className="relative z-10"
+              animate={
+                isAnimating
+                  ? {
+                      filter: [
+                        'drop-shadow(0 0 0 rgba(224,122,95,0))',
+                        'drop-shadow(0 0 6px rgba(224,122,95,0.5))',
+                        'drop-shadow(0 0 0 rgba(224,122,95,0))',
+                      ],
+                    }
+                  : { filter: 'drop-shadow(0 0 0 rgba(224,122,95,0))' }
+              }
+              transition={{ duration: 0.35, ease: 'easeOut' }}
+            >
+              <Heart
+                className={`w-5 h-5 reaction-icon ${
+                  post.isLiked ? 'fill-current' : ''
+                } ${post.isLiked ? '' : 'text-dark-300 group-hover:text-coral-400'} transition-all duration-200 ease-out`}
+                style={{
+                  color: post.isLiked ? 'var(--coral-text)' : undefined,
+                }}
+              />
+            </motion.span>
+            <span className="tabular-nums">{post.likesCount || 0} Likes</span>
+          </motion.button>
 
           {/* Comments Count */}
           <button
@@ -419,7 +468,7 @@ export default function PostDetail() {
                 color: 'var(--text-secondary)',
               }}
             >
-              {post.commentsCount || 0} comments
+              {post.commentsCount || 0} Comments
             </span>
           </button>
 
@@ -430,7 +479,7 @@ export default function PostDetail() {
             className="group relative flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 text-dark-300 font-semibold text-sm
               hover:bg-mint-500/20 hover:text-mint-400 
               hover:shadow-lg hover:shadow-mint-500/20
-              transition-all duration-200 ease-out cursor-pointer interactive-btn
+              transition-all duration-200 ease-out cursor-pointer interactive-btn share-btn-colored
               active:scale-95"
             style={{
               color: 'var(--text-secondary)',
@@ -445,6 +494,7 @@ export default function PostDetail() {
                 color: 'var(--text-secondary)',
               }}
             />
+            <span className="text-sm font-medium relative z-10">Share</span>
           </button>
         </div>
       </motion.article>
@@ -455,12 +505,13 @@ export default function PostDetail() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
         onSubmit={handleSubmitComment}
-        className="glass-card rounded-2xl p-5 mb-6 border border-white/5 hover:border-accent-500/30 transition-all duration-200"
+        className="glass-card rounded-xl p-5 mb-6 border soft-divider hover:border-accent-500/30 transition-all duration-200"
       >
         <div className="flex gap-4 items-center">
           <motion.div 
             whileHover={{ scale: 1.05 }}
-            className="w-11 h-11 rounded-full bg-gradient-to-br from-accent-500 to-mint-500 flex-shrink-0 flex items-center justify-center text-white font-bold shadow-lg shadow-accent-500/20 overflow-hidden avatar-hover"
+            className="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-white font-semibold overflow-hidden avatar-hover"
+            style={{ backgroundColor: "var(--accent)" }}
           >
             {user?.avatar ? (
               <img src={user.avatar} alt="" className="w-full h-full object-cover" />
@@ -475,7 +526,8 @@ export default function PostDetail() {
               value={newComment}
               onChange={(e) => setNewComment(e.target.value)}
               placeholder="Write a comment..."
-              className="w-full bg-dark-800/50 text-white placeholder-dark-400 border border-white/5 rounded-xl px-4 py-3 focus:outline-none focus:border-accent-500/50 focus:bg-dark-800/80 transition-all duration-200 input-smooth focus-glow"
+              className="w-full text-white placeholder-dark-400 border border-white/5 rounded-lg px-4 py-3 focus:outline-none focus:border-accent-500/50 transition-all duration-200 input-smooth focus-glow"
+              style={{ backgroundColor: "#FAF9F6" }}
               maxLength={300}
             />
             {newComment.length > 0 && (
@@ -545,7 +597,8 @@ export default function PostDetail() {
                 value={replyContent}
                 onChange={(e) => setReplyContent(e.target.value)}
                 placeholder="Write your reply..."
-                className="flex-1 bg-dark-800/50 text-white placeholder-dark-400 border border-white/5 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-accent-500/50 transition-all duration-200 input-smooth focus-glow"
+                className="flex-1 text-white placeholder-dark-400 border border-white/5 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-accent-500/50 transition-all duration-200 input-smooth focus-glow"
+                style={{ backgroundColor: "#FAF9F6" }}
                 maxLength={300}
               />
               <button
@@ -576,7 +629,7 @@ export default function PostDetail() {
           className="flex items-center gap-2 mb-4"
         >
           <MessageCircle className="w-5 h-5 text-accent-400" />
-          <h3 className="text-lg font-semibold text-white">Comments</h3>
+          <h3 className="type-h3 text-white">Comments</h3>
           <span className="px-2 py-0.5 rounded-full bg-accent-500/20 text-accent-400 text-sm font-medium">
             {comments.length}
           </span>
@@ -584,25 +637,24 @@ export default function PostDetail() {
       )}
 
       {/* Comments List */}
-      <div className="space-y-3">
+      <div className="space-y-5 ml-3 sm:ml-6">
         <AnimatePresence mode="popLayout">
           {comments.map((comment, index) => (
             <motion.div
               key={comment.id}
               layout
-              initial={{ opacity: 0, y: 20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, x: -100, scale: 0.95 }}
-              transition={{ 
-                type: 'spring', 
-                stiffness: 500, 
-                damping: 30,
-                delay: index * 0.03 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{
+                duration: 0.18,
+                ease: 'easeOut',
+                delay: index * 0.02,
               }}
               className="glass-card rounded-xl overflow-hidden"
             >
               {/* Main Comment */}
-              <div className="p-4 group">
+              <div className="p-5 group">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex gap-3 flex-1 min-w-0">
                     <MiniProfileCard username={comment.author.username}>
@@ -610,7 +662,8 @@ export default function PostDetail() {
                         <motion.div 
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.95 }}
-                          className="w-10 h-10 rounded-full bg-gradient-to-br from-accent-500 to-mint-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-md overflow-hidden avatar-hover"
+                          className="w-8 h-8 rounded-full flex items-center justify-center text-white font-medium text-sm flex-shrink-0 overflow-hidden avatar-hover"
+                          style={{ backgroundColor: "var(--accent)" }}
                         >
                           {comment.author.avatar ? (
                             <img src={comment.author.avatar} alt="" className="w-full h-full object-cover" />
@@ -625,17 +678,17 @@ export default function PostDetail() {
                         <MiniProfileCard username={comment.author.username}>
                           <Link
                             to={`/${comment.author.username}`}
-                            className="font-semibold text-white hover:text-accent-400 transition-all duration-200 interactive-link hover-scale"
+                            className="font-semibold text-white hover:text-accent-400 transition-all duration-200 interactive-link hover-scale link-underline"
                           >
                             {comment.author.displayName || comment.author.username}
                           </Link>
                         </MiniProfileCard>
-                        <span className="text-xs text-dark-500 flex items-center gap-1">
+                        <span className="type-meta text-dark-500 flex items-center gap-1">
                           <span className="w-1 h-1 rounded-full bg-dark-500"></span>
                           {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
                         </span>
                       </div>
-                      <p className="text-white/85 mt-1.5 leading-relaxed break-words">
+                      <p className="text-white/85 mt-2 leading-relaxed break-words">
                         {comment.content}
                       </p>
                       
@@ -688,15 +741,16 @@ export default function PostDetail() {
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
                     exit={{ opacity: 0, height: 0 }}
-                    className="border-t border-white/5 bg-dark-900/30"
+                    className="border-t soft-divider"
+                    style={{ backgroundColor: "var(--bg-secondary)" }}
                   >
                     {comment.replies.map((reply) => (
-                      <div key={reply.id} className="p-4 pl-16 group/reply border-b border-white/5 last:border-0">
+                      <div key={reply.id} className="p-4 pl-12 group/reply border-b soft-divider last:border-0">
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex gap-3 flex-1 min-w-0">
                             <MiniProfileCard username={reply.author.username}>
                               <Link to={`/${reply.author.username}`} className="interactive-link">
-                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-accent-500 to-mint-500 flex items-center justify-center text-white font-bold text-xs flex-shrink-0 overflow-hidden avatar-hover">
+                                <div className="w-7 h-7 rounded-full flex items-center justify-center text-white font-medium text-xs flex-shrink-0 overflow-hidden avatar-hover" style={{ backgroundColor: "var(--accent)" }}>
                                   {reply.author.avatar ? (
                                     <img src={reply.author.avatar} alt="" className="w-full h-full object-cover" />
                                   ) : (
@@ -710,16 +764,16 @@ export default function PostDetail() {
                                 <MiniProfileCard username={reply.author.username}>
                                   <Link
                                     to={`/${reply.author.username}`}
-                                    className="font-semibold text-sm text-white hover:text-accent-400 transition-all duration-200 interactive-link hover-scale"
+                                    className="font-semibold text-sm text-white hover:text-accent-400 transition-all duration-200 interactive-link hover-scale link-underline"
                                   >
                                     {reply.author.displayName || reply.author.username}
                                   </Link>
                                 </MiniProfileCard>
-                                <span className="text-xs text-dark-500">
+                                <span className="type-meta text-dark-500">
                                   {formatDistanceToNow(new Date(reply.createdAt), { addSuffix: true })}
                                 </span>
                               </div>
-                              <p className="text-sm text-white/80 mt-1 break-words">
+                              <p className="type-body text-white/80 mt-1 break-words">
                                 {reply.content}
                               </p>
                             </div>
@@ -758,7 +812,7 @@ export default function PostDetail() {
           >
             💬
           </motion.div>
-          <h3 className="text-lg font-semibold text-white mb-2">No comments yet</h3>
+          <h3 className="type-h3 text-white mb-2">No comments yet</h3>
           <p className="text-dark-400">Be the first to share your thoughts!</p>
         </motion.div>
       )}

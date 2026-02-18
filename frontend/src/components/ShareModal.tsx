@@ -201,7 +201,7 @@ export default function ShareModal({ isOpen, onClose, postId, onShare, title = '
                         <div
                           className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0"
                           style={{
-                            background: 'linear-gradient(135deg, var(--accent) 0%, var(--coral-text) 100%)',
+                            background: 'var(--accent)',
                             color: 'white',
                           }}
                         >
@@ -251,7 +251,7 @@ export default function ShareModal({ isOpen, onClose, postId, onShare, title = '
                         <div
                           className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0"
                           style={{
-                            background: 'linear-gradient(135deg, var(--accent) 0%, var(--coral-text) 100%)',
+                            background: 'var(--accent)',
                             color: 'white',
                           }}
                         >
@@ -280,4 +280,3 @@ export default function ShareModal({ isOpen, onClose, postId, onShare, title = '
     </AnimatePresence>
   );
 }
-

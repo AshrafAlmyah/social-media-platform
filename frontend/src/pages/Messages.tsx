@@ -39,11 +39,11 @@ export default function Messages() {
   }, [userIdFromUrl]);
 
   return (
-    <div className="fixed inset-0 md:left-64 top-0 right-0 bottom-0 p-2 sm:p-4">
+    <div className="w-full p-0 sm:p-2">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="glass-card rounded-2xl overflow-hidden h-full flex"
+        className="glass-card rounded-2xl overflow-hidden min-h-[70vh] md:min-h-[78vh] flex"
         style={{ backgroundColor: "var(--card-bg)" }}
       >
         {/* Chat Thread */}

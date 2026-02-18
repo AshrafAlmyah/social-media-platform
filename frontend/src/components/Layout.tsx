@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type ReactNode } from "react";
 import { Outlet, NavLink, useNavigate, Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -15,7 +15,9 @@ import {
   Bookmark,
   Moon,
   Sun,
-  Menu,
+  Search,
+  Plus,
+  X,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useAuthStore } from "../store/authStore";
@@ -23,23 +25,61 @@ import { notificationsApi, Notification } from "../api/notifications";
 import { messagesApi } from "../api/messages";
 import { useTheme } from "../hooks/useTheme";
 
+function MainContainer({ children }: { children: ReactNode }) {
+  return (
+    <main className="max-w-[960px] mx-auto px-4 sm:px-6 py-10 md:py-12 pb-28 md:pb-12">
+      {children}
+    </main>
+  );
+}
+
+function FloatingActionButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="fixed right-5 bottom-24 md:bottom-8 z-40 w-14 h-14 rounded-full btn-primary shadow-lg flex items-center justify-center interactive-btn"
+      aria-label="Create post"
+      title="Create post"
+    >
+      <Plus className="w-6 h-6 text-white" />
+    </button>
+  );
+}
+
 export default function Layout() {
   const { user, logout } = useAuthStore();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
-  const isMessagesRoute = location.pathname === "/messages";
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const notificationRef = useRef<HTMLDivElement>(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isChatDrawerOpen, setIsChatDrawerOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
     navigate("/login");
+  };
+
+  const handleCreateAction = () => {
+    if (location.pathname !== "/") {
+      navigate("/");
+    }
+    setTimeout(() => {
+      const createInput = document.querySelector(
+        "textarea[placeholder=\"What's on your mind?\"]"
+      ) as HTMLTextAreaElement | null;
+      if (createInput) {
+        createInput.scrollIntoView({ behavior: "smooth", block: "center" });
+        createInput.focus();
+      } else {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    }, 180);
   };
 
   const navItems = [
@@ -55,7 +95,6 @@ export default function Layout() {
     { to: `/${user?.username}`, icon: User, label: "Profile" },
   ];
 
-  // Fetch unread count on mount and periodically
   useEffect(() => {
     const fetchUnreadCount = async () => {
       try {
@@ -67,12 +106,10 @@ export default function Layout() {
     };
 
     fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 30000); // Every 30 seconds
-
+    const interval = setInterval(fetchUnreadCount, 30000);
     return () => clearInterval(interval);
   }, []);
 
-  // Fetch unread message count on mount and periodically
   useEffect(() => {
     const fetchUnreadMessageCount = async () => {
       try {
@@ -84,12 +121,10 @@ export default function Layout() {
     };
 
     fetchUnreadMessageCount();
-    const interval = setInterval(fetchUnreadMessageCount, 10000); // Every 10 seconds
-
+    const interval = setInterval(fetchUnreadMessageCount, 10000);
     return () => clearInterval(interval);
   }, []);
 
-  // Fetch notifications when panel opens
   useEffect(() => {
     if (showNotifications) {
       const fetchNotifications = async () => {
@@ -107,7 +142,6 @@ export default function Layout() {
     }
   }, [showNotifications]);
 
-  // Close notifications panel when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -210,344 +244,366 @@ export default function Layout() {
   };
 
   const getNotificationLink = (notification: Notification) => {
-    if (notification.type === "follow") {
-      return `/${notification.actor.username}`;
-    }
-    if (notification.type === "message") {
-      return `/messages`;
-    }
-    if (notification.post) {
-      return `/post/${notification.post.id}`;
-    }
+    if (notification.type === "follow") return `/${notification.actor.username}`;
+    if (notification.type === "message") return `/messages`;
+    if (notification.post) return `/post/${notification.post.id}`;
     return "#";
   };
 
   return (
-    <div className="min-h-screen flex">
-      {/* Mobile sidebar backdrop */}
+    <div className="min-h-screen">
+      <header
+        className="sticky top-0 z-40 border-b border-border-color"
+        style={{ backgroundColor: "var(--bg-primary)" }}
+      >
+        <div className="max-w-[960px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+          <Link to="/" className="flex items-center gap-2 shrink-0">
+            <div className="w-9 h-9 rounded-lg bg-accent-500 flex items-center justify-center">
+              <Sparkles className="w-4 h-4 text-white" />
+            </div>
+            <span className="text-lg font-semibold gradient-text">Nexus</span>
+          </Link>
+
+          <div className="hidden sm:flex flex-1 max-w-md mx-3">
+            <div className="relative w-full">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-dark-500" />
+              <input
+                type="text"
+                placeholder="Search"
+                className="w-full pl-9 pr-3 py-2 rounded-lg"
+                style={{
+                  backgroundColor: "var(--bg-tertiary)",
+                  border: "1px solid var(--border-color)",
+                }}
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              type="button"
+              onClick={() => setIsChatDrawerOpen(true)}
+              className="relative p-2 rounded-lg interactive-btn"
+              style={{ color: "var(--text-secondary)" }}
+              aria-label="Open chat panel"
+            >
+              <MessageCircle className="w-5 h-5" />
+              {unreadMessageCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-coral-500 rounded-full text-[10px] font-semibold flex items-center justify-center text-white">
+                  {unreadMessageCount > 9 ? "9+" : unreadMessageCount}
+                </span>
+              )}
+            </button>
+
+            <div className="relative" ref={notificationRef}>
+              <button
+                type="button"
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="relative p-2 rounded-lg interactive-btn"
+                style={{ color: "var(--text-secondary)" }}
+                aria-label="Notifications"
+              >
+                <Bell className="w-5 h-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-coral-500 rounded-full text-[10px] font-semibold flex items-center justify-center text-white">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              <AnimatePresence>
+                {showNotifications && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.2 }}
+                    className="absolute right-0 mt-2 w-80 glass-card rounded-xl shadow-lg overflow-hidden"
+                  >
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-border-color">
+                      <h3 className="font-medium" style={{ color: "var(--text-primary)" }}>
+                        Notifications
+                      </h3>
+                      {unreadCount > 0 && (
+                        <button
+                          onClick={handleMarkAllAsRead}
+                          className="flex items-center gap-1 text-xs interactive-btn"
+                          style={{ color: "var(--accent-text)" }}
+                        >
+                          <CheckCheck className="w-3.5 h-3.5" />
+                          Mark all read
+                        </button>
+                      )}
+                    </div>
+                    <div className="max-h-96 overflow-y-auto">
+                      {isLoading ? (
+                        <div className="flex items-center justify-center py-8">
+                          <div className="w-6 h-6 border-2 border-accent-500/30 border-t-accent-500 rounded-full animate-spin" />
+                        </div>
+                      ) : notifications.length === 0 ? (
+                        <div className="text-center py-8 px-4">
+                          <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
+                            No notifications yet
+                          </p>
+                        </div>
+                      ) : (
+                        notifications.map((notification) => (
+                          <Link
+                            key={notification.id}
+                            to={getNotificationLink(notification)}
+                            onClick={() => {
+                              if (!notification.isRead) handleMarkAsRead(notification.id);
+                              setShowNotifications(false);
+                            }}
+                            className={`flex items-start gap-3 px-4 py-3 transition-all duration-200 ${
+                              !notification.isRead ? "bg-accent-500/5" : ""
+                            }`}
+                          >
+                            <div className="w-9 h-9 rounded-full bg-accent-500 flex items-center justify-center text-white text-sm font-medium overflow-hidden">
+                              {notification.actor.avatar ? (
+                                <img
+                                  src={notification.actor.avatar}
+                                  alt=""
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                notification.actor.displayName?.[0] ||
+                                notification.actor.username[0]
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm" style={{ color: "var(--text-primary)" }}>
+                                {getNotificationText(notification)}
+                              </p>
+                              <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>
+                                {formatDistanceToNow(new Date(notification.createdAt), {
+                                  addSuffix: true,
+                                })}
+                              </p>
+                            </div>
+                            <div className="mt-0.5">{getNotificationIcon(notification.type)}</div>
+                          </Link>
+                        ))
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            <Link
+              to={`/${user?.username}`}
+              className="w-9 h-9 rounded-full overflow-hidden flex items-center justify-center"
+              style={{ backgroundColor: "var(--bg-tertiary)" }}
+            >
+              {user?.avatar ? (
+                <img src={user.avatar} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <span style={{ color: "var(--text-primary)" }}>
+                  {user?.displayName?.[0] || user?.username?.[0] || "U"}
+                </span>
+              )}
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      <section className="border-b border-border-color">
+        <div className="max-w-[960px] mx-auto px-4 sm:px-6 py-3 overflow-x-auto">
+          <div className="flex items-center justify-center gap-3 min-w-max mx-auto">
+            {navItems.map(({ to, icon: Icon, label, badge }) => (
+              <NavLink
+                key={to}
+                to={to}
+                className={({ isActive }) =>
+                  `flex items-center gap-2 px-4 py-2 rounded-full text-sm transition-all duration-200 ${
+                    isActive
+                      ? "bg-accent-500 text-white"
+                      : "bg-white/5 text-dark-400 hover:bg-accent-500/10"
+                  }`
+                }
+              >
+                <Icon className="w-4 h-4" />
+                <span>{label}</span>
+                {badge !== undefined && badge > 0 && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-coral-500 text-white">
+                    {badge > 9 ? "9+" : badge}
+                  </span>
+                )}
+              </NavLink>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <MainContainer>
+        <div className="w-full">
+          <Outlet />
+        </div>
+      </MainContainer>
+
+      <FloatingActionButton onClick={handleCreateAction} />
+
       <AnimatePresence>
-        {isSidebarOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 z-40 md:hidden"
-            onClick={() => setIsSidebarOpen(false)}
-            style={{ backgroundColor: "var(--overlay-medium)" }}
-          />
+        {isChatDrawerOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50"
+              style={{ backgroundColor: "var(--overlay-medium)" }}
+              onClick={() => setIsChatDrawerOpen(false)}
+            />
+            <motion.aside
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+              className="fixed right-0 top-0 h-screen w-full sm:w-[360px] z-[60] border-l border-border-color"
+              style={{ backgroundColor: "var(--card-bg)" }}
+            >
+              <div className="h-full flex flex-col">
+                <div className="h-16 px-4 border-b border-border-color flex items-center justify-between">
+                  <h3 className="text-lg font-medium" style={{ color: "var(--text-primary)" }}>
+                    Panel
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => setIsChatDrawerOpen(false)}
+                    className="p-2 rounded-lg interactive-btn"
+                    style={{ color: "var(--text-secondary)" }}
+                    aria-label="Close panel"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="p-4 space-y-2">
+                  <Link
+                    to="/messages"
+                    onClick={() => setIsChatDrawerOpen(false)}
+                    className="flex items-center justify-between px-4 py-3 rounded-xl bg-white/5 transition-all"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    <span className="flex items-center gap-2">
+                      <MessageCircle className="w-5 h-5" />
+                      Open Messages
+                    </span>
+                    {unreadMessageCount > 0 && (
+                      <span className="text-[10px] px-2 py-1 rounded-full bg-coral-500 text-white">
+                        {unreadMessageCount > 9 ? "9+" : unreadMessageCount}
+                      </span>
+                    )}
+                  </Link>
+
+                  {navItems.map(({ to, icon: Icon, label }) => (
+                    <Link
+                      key={to}
+                      to={to}
+                      onClick={() => setIsChatDrawerOpen(false)}
+                      className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/5 transition-all"
+                      style={{ color: "var(--text-secondary)" }}
+                    >
+                      <Icon className="w-5 h-5" />
+                      <span>{label}</span>
+                    </Link>
+                  ))}
+                </div>
+
+                <div className="mt-auto p-4 border-t border-border-color space-y-2">
+                  <button
+                    type="button"
+                    onClick={toggleTheme}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-white/5 transition-all"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+                    {theme === "dark" ? (
+                      <Sun className="w-5 h-5" />
+                    ) : (
+                      <Moon className="w-5 h-5" />
+                    )}
+                    <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-white/5 transition-all"
+                    style={{ color: "var(--coral-text)" }}
+                  >
+                    <LogOut className="w-5 h-5" />
+                    <span>Logout</span>
+                  </button>
+                </div>
+              </div>
+            </motion.aside>
+          </>
         )}
       </AnimatePresence>
 
-      {/* Sidebar */}
-      <motion.aside
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className={`fixed left-0 top-0 h-screen w-64 glass border-r border-white/5 p-6 flex flex-col z-50 transform transition-transform duration-300 ${
-          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-        } md:translate-x-0`}
+      <nav
+        className="md:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-border-color px-2 py-2"
+        style={{ backgroundColor: "var(--bg-secondary)" }}
       >
-        {/* Logo */}
-        <div className="flex items-center gap-3 mb-12">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent-500 to-coral-500 flex items-center justify-center">
-            <Sparkles className="w-5 h-5 text-white" />
-          </div>
-          <span className="text-2xl font-bold gradient-text">Nexus</span>
-        </div>
-
-        {/* Navigation */}
-        <nav className="flex-1 space-y-2">
-          {navItems.map(({ to, icon: Icon, label, badge }) => (
-            <NavLink
-              key={to}
-              to={to}
-              className={({ isActive }) =>
-                `flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 relative ${
-                  isActive
-                    ? "bg-gradient-to-r from-accent-500/30 to-coral-500/30 text-white shadow-lg shadow-accent-500/20"
-                    : "text-dark-400 hover:text-white hover:bg-white/8"
-                }`
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  {isActive && (
-                    <motion.div
-                      layoutId="activeNav"
-                      className="absolute inset-0 bg-gradient-to-r from-accent-500/30 to-coral-500/30 rounded-xl -z-10"
-                      transition={{
-                        type: "spring",
-                        bounce: 0.2,
-                        duration: 0.6,
-                      }}
-                    />
-                  )}
-                  <div className="relative">
-                    <Icon className="w-5 h-5 relative z-10" />
-                    {badge !== undefined && badge > 0 && (
-                      <motion.span
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-coral-500 rounded-full text-[10px] font-bold flex items-center justify-center text-white z-20"
-                      >
-                        {badge > 9 ? "9+" : badge}
-                      </motion.span>
-                    )}
-                  </div>
-                  <span className="font-semibold relative z-10">{label}</span>
-                </>
-              )}
-            </NavLink>
-          ))}
-
-          {/* Notifications Button */}
-          <div className="relative" ref={notificationRef}>
-            <button
-              onClick={() => setShowNotifications(!showNotifications)}
-              className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 w-full relative ${
-                showNotifications
-                  ? "bg-gradient-to-r from-accent-500/30 to-coral-500/30 text-white shadow-lg shadow-accent-500/20"
-                  : "text-dark-400 hover:text-white hover:bg-white/8"
-              }`}
-            >
-              <div className="relative">
-                <Bell className="w-5 h-5" />
-                {unreadCount > 0 && (
-                  <motion.span
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-coral-500 rounded-full text-[10px] font-bold flex items-center justify-center text-white"
-                  >
-                    {unreadCount > 9 ? "9+" : unreadCount}
-                  </motion.span>
-                )}
-              </div>
-              <span className="font-medium">Notifications</span>
-            </button>
-
-            {/* Notifications Dropdown */}
-            <AnimatePresence>
-              {showNotifications && (
-                <motion.div
-                  initial={{ opacity: 0, x: -10, scale: 0.95 }}
-                  animate={{ opacity: 1, x: 0, scale: 1 }}
-                  exit={{ opacity: 0, x: -10, scale: 0.95 }}
-                  transition={{ duration: 0.15 }}
-                  className="absolute left-full top-0 ml-2 w-80 glass-card rounded-2xl shadow-2xl overflow-hidden z-50"
-                >
-                  {/* Header */}
-                  <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
-                    <h3 className="font-semibold text-white">Notifications</h3>
-                    {unreadCount > 0 && (
-                      <button
-                        onClick={handleMarkAllAsRead}
-                        className="flex items-center gap-1 text-xs text-accent-400 hover:text-accent-300 transition-all duration-200 interactive-btn hover:scale-105"
-                      >
-                        <CheckCheck className="w-3.5 h-3.5" />
-                        Mark all read
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Notifications List */}
-                  <div className="max-h-96 overflow-y-auto">
-                    {isLoading ? (
-                      <div className="flex items-center justify-center py-8">
-                        <div className="w-6 h-6 border-2 border-accent-500/30 border-t-accent-500 rounded-full animate-spin" />
-                      </div>
-                    ) : notifications.length === 0 ? (
-                      <div className="text-center py-8 px-4">
-                        <Bell className="w-10 h-10 text-dark-500 mx-auto mb-2" />
-                        <p className="text-dark-400 text-sm">
-                          No notifications yet
-                        </p>
-                      </div>
-                    ) : (
-                      notifications.map((notification) => (
-                        <Link
-                          key={notification.id}
-                          to={getNotificationLink(notification)}
-                          onClick={() => {
-                            if (!notification.isRead)
-                              handleMarkAsRead(notification.id);
-                            setShowNotifications(false);
-                          }}
-                          className={`flex items-start gap-3 px-4 py-3 hover:bg-white/8 transition-all duration-200 interactive-link hover-scale ${
-                            !notification.isRead ? "bg-accent-500/5" : ""
-                          }`}
-                        >
-                          {/* Actor Avatar */}
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-accent-500 to-mint-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 overflow-hidden avatar-hover">
-                            {notification.actor.avatar ? (
-                              <img
-                                src={notification.actor.avatar}
-                                alt=""
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              notification.actor.displayName?.[0] ||
-                              notification.actor.username[0]
-                            )}
-                          </div>
-
-                          {/* Content */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start gap-2">
-                              <div className="flex-1">
-                                <p
-                                  className="text-sm text-white/90 leading-snug"
-                                  style={{ color: "var(--text-opacity-90)" }}
-                                >
-                                  {getNotificationText(notification)}
-                                </p>
-                                {notification.post &&
-                                  notification.type !== "follow" && (
-                                    <p className="text-xs text-dark-400 mt-1 truncate">
-                                      "{notification.post.content.slice(0, 50)}
-                                      {notification.post.content.length > 50
-                                        ? "..."
-                                        : ""}
-                                      "
-                                    </p>
-                                  )}
-                                <p className="text-xs text-dark-500 mt-1">
-                                  {formatDistanceToNow(
-                                    new Date(notification.createdAt),
-                                    { addSuffix: true }
-                                  )}
-                                </p>
-                              </div>
-                              <div className="flex-shrink-0 mt-0.5">
-                                {getNotificationIcon(notification.type)}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Unread indicator */}
-                          {!notification.isRead && (
-                            <div className="w-2 h-2 rounded-full bg-accent-500 flex-shrink-0 mt-2" />
-                          )}
-                        </Link>
-                      ))
-                    )}
-                  </div>
-
-                  {/* Footer */}
-                  {notifications.length > 0 && (
-                    <div className="border-t border-white/5 p-2">
-                      <Link
-                        to="/notifications"
-                        onClick={() => setShowNotifications(false)}
-                        className="block text-center text-sm text-accent-400 hover:text-accent-300 py-2 rounded-lg hover:bg-white/8 transition-all duration-200 interactive-link"
-                      >
-                        View all notifications
-                      </Link>
-                    </div>
-                  )}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
-          {/* Theme Toggle */}
-          <motion.button
-            onClick={toggleTheme}
-            whileHover={{ scale: 1.02, x: 2 }}
-            whileTap={{ scale: 0.98 }}
-            className="flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 text-dark-400 hover:text-white hover:bg-white/8 interactive-btn"
+        <div className="max-w-[960px] mx-auto grid grid-cols-5 gap-1">
+          <NavLink
+            to="/"
+            className={({ isActive }) =>
+              `flex flex-col items-center justify-center py-2 rounded-lg text-xs ${
+                isActive ? "bg-accent-500 text-white" : "text-dark-400"
+              }`
+            }
           >
-            <motion.div
-              animate={{
-                rotate: theme === "dark" ? [0, 180, 360] : [360, 180, 0],
-              }}
-              transition={{
-                duration: 0.5,
-                ease: "easeInOut",
-              }}
-            >
-              {theme === "dark" ? (
-                <Sun className="w-5 h-5" />
-              ) : (
-                <Moon className="w-5 h-5" />
-              )}
-            </motion.div>
-            <span className="font-medium">
-              {theme === "dark" ? "Light Mode" : "Dark Mode"}
-            </span>
-          </motion.button>
-        </nav>
-
-        {/* User section */}
-        <div className="border-t border-white/5 pt-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-accent-500 to-mint-500 flex items-center justify-center text-white font-bold overflow-hidden avatar-hover">
-              {user?.avatar ? (
-                <img
-                  src={user.avatar}
-                  alt=""
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                user?.displayName?.[0] || user?.username?.[0] || "U"
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-semibold text-white truncate">
-                {user?.displayName || user?.username}
-              </p>
-              <p className="text-sm text-dark-400 truncate">
-                @{user?.username}
-              </p>
-            </div>
-          </div>
+            <Home className="w-4 h-4 mb-1" />
+            Home
+          </NavLink>
+          <NavLink
+            to="/explore"
+            className={({ isActive }) =>
+              `flex flex-col items-center justify-center py-2 rounded-lg text-xs ${
+                isActive ? "bg-accent-500 text-white" : "text-dark-400"
+              }`
+            }
+          >
+            <Search className="w-4 h-4 mb-1" />
+            Search
+          </NavLink>
           <button
-            onClick={handleLogout}
-            className="flex items-center gap-3 text-dark-400 hover:text-coral-500 transition-all duration-200 w-full px-4 py-2 rounded-lg interactive-btn hover:bg-white/5"
+            type="button"
+            onClick={handleCreateAction}
+            className="flex flex-col items-center justify-center py-2 rounded-lg text-xs"
+            style={{ color: "var(--text-secondary)" }}
           >
-            <LogOut className="w-5 h-5 icon-rotate" />
-            <span>Logout</span>
+            <Plus className="w-4 h-4 mb-1" />
+            Create
           </button>
-        </div>
-      </motion.aside>
-
-      {/* Main content */}
-      <main className="flex-1 min-h-screen md:ml-64">
-        {/* Mobile top bar */}
-        {!isMessagesRoute && (
-          <div
-            className="md:hidden sticky top-0 z-30 flex items-center justify-between px-4 py-3 border-b border-border-color"
-            style={{ backgroundColor: "var(--bg-primary)" }}
+          <button
+            type="button"
+            onClick={() => setIsChatDrawerOpen(true)}
+            className="relative flex flex-col items-center justify-center py-2 rounded-lg text-xs"
+            style={{ color: "var(--text-secondary)" }}
           >
-            <button
-              onClick={() => setIsSidebarOpen(true)}
-              className="p-2 rounded-lg text-dark-400 hover:text-white hover:bg-white/8 transition-all duration-200 interactive-btn"
-              aria-label="Open menu"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-            <Link to="/" className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-accent-500 to-coral-500 flex items-center justify-center">
-                <Sparkles className="w-4 h-4 text-white" />
-              </div>
-              <span className="text-lg font-bold gradient-text">Nexus</span>
-            </Link>
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-lg text-dark-400 hover:text-white hover:bg-white/8 transition-all duration-200 interactive-btn"
-              aria-label="Toggle theme"
-            >
-              {theme === "dark" ? (
-                <Sun className="w-5 h-5" />
-              ) : (
-                <Moon className="w-5 h-5" />
-              )}
-            </button>
-          </div>
-        )}
-
-        <div className="max-w-2xl mx-auto py-4 sm:py-8 px-4 sm:px-6">
-          <Outlet />
+            <MessageCircle className="w-4 h-4 mb-1" />
+            Chat
+            {unreadMessageCount > 0 && (
+              <span className="absolute top-1 right-5 w-4 h-4 text-[10px] rounded-full bg-coral-500 text-white flex items-center justify-center">
+                {unreadMessageCount > 9 ? "9+" : unreadMessageCount}
+              </span>
+            )}
+          </button>
+          <NavLink
+            to={`/${user?.username}`}
+            className={({ isActive }) =>
+              `flex flex-col items-center justify-center py-2 rounded-lg text-xs ${
+                isActive ? "bg-accent-500 text-white" : "text-dark-400"
+              }`
+            }
+          >
+            <User className="w-4 h-4 mb-1" />
+            Profile
+          </NavLink>
         </div>
-      </main>
+      </nav>
     </div>
   );
 }
